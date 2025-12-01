@@ -11,10 +11,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Initialize bot manager
   botManager = new BotManager(httpServer);
 
-  // Get all saved bot profiles
   app.get("/api/profiles", async (_req, res) => {
     try {
       const profiles = await storage.getAllBotProfiles();
@@ -24,7 +22,6 @@ export async function registerRoutes(
     }
   });
 
-  // Save a bot profile
   app.post("/api/profiles", async (req, res) => {
     try {
       const validatedData = insertBotProfileSchema.parse(req.body);
@@ -39,7 +36,6 @@ export async function registerRoutes(
     }
   });
 
-  // Delete a bot profile
   app.delete("/api/profiles/:id", async (req, res) => {
     try {
       await storage.deleteBotProfile(req.params.id);
@@ -49,7 +45,6 @@ export async function registerRoutes(
     }
   });
 
-  // Connect a bot to a server
   app.post("/api/bots/connect", async (req, res) => {
     try {
       const { id, username, host, port, password, nickname } = req.body;
@@ -65,6 +60,7 @@ export async function registerRoutes(
         port: parseInt(port) || 25565,
         password,
         nickname,
+        autoReconnect: true,
       });
 
       res.json({ success: true, botId: id });
@@ -73,17 +69,25 @@ export async function registerRoutes(
     }
   });
 
-  // Disconnect a bot
   app.post("/api/bots/:id/disconnect", async (req, res) => {
     try {
-      botManager.disconnectBot(req.params.id);
+      const permanent = req.query.permanent === 'true';
+      botManager.disconnectBot(req.params.id, permanent);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Send chat message
+  app.post("/api/bots/:id/reconnect", async (req, res) => {
+    try {
+      await botManager.reconnectBot(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/bots/:id/chat", async (req, res) => {
     try {
       const { message } = req.body;
@@ -98,7 +102,6 @@ export async function registerRoutes(
     }
   });
 
-  // Get bot status
   app.get("/api/bots/:id/status", async (req, res) => {
     try {
       const status = botManager.getBotStatus(req.params.id);
@@ -111,7 +114,6 @@ export async function registerRoutes(
     }
   });
 
-  // Get chat logs for a bot
   app.get("/api/bots/:id/logs", async (req, res) => {
     try {
       const logs = await storage.getChatLogs(req.params.id);

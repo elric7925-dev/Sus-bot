@@ -16,7 +16,7 @@ export interface Bot {
   profileId?: string;
   nickname: string;
   serverIp: string;
-  status: 'online' | 'offline' | 'connecting' | 'error';
+  status: 'online' | 'offline' | 'connecting' | 'error' | 'reconnecting';
   health: number;
   food: number;
   position: { x: number; y: number; z: number };
@@ -39,15 +39,17 @@ interface BotState {
   selectedBotId: string | null;
 
   // Actions
-  addProfile: (profile: Omit<BotProfile, 'id'>) => void;
-  deleteProfile: (id: string) => void;
+  addProfile: (profile: Omit<BotProfile, 'id'>) => Promise<void>;
+  deleteProfile: (id: string) => Promise<void>;
   connectBot: (profile: BotProfile) => Promise<void>;
-  disconnectBot: (botId: string) => Promise<void>;
+  disconnectBot: (botId: string, permanent?: boolean) => Promise<void>;
+  reconnectBot: (botId: string) => Promise<void>;
   selectBot: (botId: string | null) => void;
   sendChatMessage: (botId: string, message: string) => Promise<void>;
   updateBotStatus: (bot: Partial<Bot> & { id: string }) => void;
   addChatLog: (log: ChatMessage) => void;
   loadProfiles: () => Promise<void>;
+  removeBot: (botId: string) => void;
 }
 
 export const useBotStore = create<BotState>()(
@@ -160,19 +162,38 @@ export const useBotStore = create<BotState>()(
         }
       },
 
-      disconnectBot: async (botId) => {
+      disconnectBot: async (botId, permanent = false) => {
         try {
-          await fetch(`/api/bots/${botId}/disconnect`, {
+          await fetch(`/api/bots/${botId}/disconnect?permanent=${permanent}`, {
             method: 'POST',
           });
           
-          set((state) => ({
-            bots: state.bots.filter((b) => b.id !== botId),
-            selectedBotId: state.selectedBotId === botId ? null : state.selectedBotId,
-          }));
+          if (permanent) {
+            set((state) => ({
+              bots: state.bots.filter((b) => b.id !== botId),
+              selectedBotId: state.selectedBotId === botId ? null : state.selectedBotId,
+            }));
+          }
         } catch (error) {
           console.error('Failed to disconnect bot:', error);
         }
+      },
+
+      reconnectBot: async (botId) => {
+        try {
+          await fetch(`/api/bots/${botId}/reconnect`, {
+            method: 'POST',
+          });
+        } catch (error) {
+          console.error('Failed to reconnect bot:', error);
+        }
+      },
+
+      removeBot: (botId) => {
+        set((state) => ({
+          bots: state.bots.filter((b) => b.id !== botId),
+          selectedBotId: state.selectedBotId === botId ? null : state.selectedBotId,
+        }));
       },
 
       selectBot: (botId) => set({ selectedBotId: botId }),
@@ -190,11 +211,29 @@ export const useBotStore = create<BotState>()(
       },
 
       updateBotStatus: (botUpdate) => {
-        set((state) => ({
-          bots: state.bots.map((bot) =>
-            bot.id === botUpdate.id ? { ...bot, ...botUpdate } : bot
-          ),
-        }));
+        set((state) => {
+          const existingBot = state.bots.find(b => b.id === botUpdate.id);
+          
+          if (!existingBot && botUpdate.status !== 'offline') {
+            return {
+              bots: [...state.bots, {
+                id: botUpdate.id,
+                nickname: botUpdate.nickname || 'Unknown',
+                serverIp: botUpdate.serverIp || 'Unknown',
+                status: botUpdate.status || 'connecting',
+                health: botUpdate.health || 20,
+                food: botUpdate.food || 20,
+                position: botUpdate.position || { x: 0, y: 0, z: 0 },
+              } as Bot],
+            };
+          }
+          
+          return {
+            bots: state.bots.map((bot) =>
+              bot.id === botUpdate.id ? { ...bot, ...botUpdate } : bot
+            ),
+          };
+        });
       },
 
       addChatLog: (log) => {
