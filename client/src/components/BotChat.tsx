@@ -7,7 +7,7 @@ import { Send, Terminal, MessageSquare, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BotChat() {
-  const { selectedBotId, bots, logs, sendChatMessage, simulateIncomingMessage } = useBotStore();
+  const { selectedBotId, bots, logs, sendChatMessage } = useBotStore();
   const [inputValue, setInputValue] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -24,13 +24,7 @@ export function BotChat() {
     e?.preventDefault();
     if (!inputValue.trim() || !selectedBotId) return;
     
-    // Check for debug command to simulate incoming whisper
-    if (inputValue.startsWith("/sim ")) {
-      const content = inputValue.replace("/sim ", "");
-      simulateIncomingMessage(selectedBotId, "RandomPlayer", content);
-    } else {
-      sendChatMessage(selectedBotId, inputValue);
-    }
+    sendChatMessage(selectedBotId, inputValue);
     setInputValue("");
   };
 
@@ -104,20 +98,8 @@ export function BotChat() {
             <Send className="w-4 h-4" />
           </Button>
         </form>
-        <div className="mt-2 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-[10px] h-6 px-2 font-mono border-dashed"
-            onClick={() => {
-              if (selectedBotId) {
-                simulateIncomingMessage(selectedBotId, "Griefer69", "tpmekaro Steve");
-              }
-            }}
-          >
-            <Zap className="w-3 h-3 mr-1 text-yellow-500" />
-            SIMULATE: "tpmekaro"
-          </Button>
+        <div className="mt-2 text-[10px] text-muted-foreground font-mono">
+          Auto-TP enabled: whisper "tpmekaro [player]" to trigger /tpahere
         </div>
       </div>
     </div>

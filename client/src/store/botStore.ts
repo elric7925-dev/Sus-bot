@@ -4,10 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export interface BotProfile {
   id: string;
-  email: string;
   username: string;
-  password?: string; // In a real app, be careful. Here it's local storage mock.
-  serverPass?: string; // For /login or server auth
+  password?: string;
   serverIp: string;
   port: string;
   nickname: string;
@@ -18,10 +16,11 @@ export interface Bot {
   profileId?: string;
   nickname: string;
   serverIp: string;
-  status: 'online' | 'offline' | 'connecting';
+  status: 'online' | 'offline' | 'connecting' | 'error';
   health: number;
   food: number;
   position: { x: number; y: number; z: number };
+  error?: string;
 }
 
 export interface ChatMessage {
@@ -42,11 +41,13 @@ interface BotState {
   // Actions
   addProfile: (profile: Omit<BotProfile, 'id'>) => void;
   deleteProfile: (id: string) => void;
-  connectBot: (profile: BotProfile) => void;
-  disconnectBot: (botId: string) => void;
+  connectBot: (profile: BotProfile) => Promise<void>;
+  disconnectBot: (botId: string) => Promise<void>;
   selectBot: (botId: string | null) => void;
-  sendChatMessage: (botId: string, message: string) => void;
-  simulateIncomingMessage: (botId: string, sender: string, content: string) => void;
+  sendChatMessage: (botId: string, message: string) => Promise<void>;
+  updateBotStatus: (bot: Partial<Bot> & { id: string }) => void;
+  addChatLog: (log: ChatMessage) => void;
+  loadProfiles: () => Promise<void>;
 }
 
 export const useBotStore = create<BotState>()(
@@ -57,17 +58,49 @@ export const useBotStore = create<BotState>()(
       logs: {},
       selectedBotId: null,
 
-      addProfile: (profileData) =>
-        set((state) => ({
-          profiles: [...state.profiles, { ...profileData, id: uuidv4() }],
-        })),
+      loadProfiles: async () => {
+        try {
+          const response = await fetch('/api/profiles');
+          if (response.ok) {
+            const profiles = await response.json();
+            set({ profiles });
+          }
+        } catch (error) {
+          console.error('Failed to load profiles:', error);
+        }
+      },
 
-      deleteProfile: (id) =>
-        set((state) => ({
-          profiles: state.profiles.filter((p) => p.id !== id),
-        })),
+      addProfile: async (profileData) => {
+        try {
+          const response = await fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(profileData),
+          });
 
-      connectBot: (profile) => {
+          if (response.ok) {
+            const profile = await response.json();
+            set((state) => ({
+              profiles: [...state.profiles, profile],
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to save profile:', error);
+        }
+      },
+
+      deleteProfile: async (id) => {
+        try {
+          await fetch(`/api/profiles/${id}`, { method: 'DELETE' });
+          set((state) => ({
+            profiles: state.profiles.filter((p) => p.id !== id),
+          }));
+        } catch (error) {
+          console.error('Failed to delete profile:', error);
+        }
+      },
+
+      connectBot: async (profile) => {
         const botId = uuidv4();
         const newBot: Bot = {
           id: botId,
@@ -77,156 +110,107 @@ export const useBotStore = create<BotState>()(
           status: 'connecting',
           health: 20,
           food: 20,
-          position: { x: 100, y: 64, z: -200 },
+          position: { x: 0, y: 0, z: 0 },
         };
 
         set((state) => ({
           bots: [...state.bots, newBot],
           logs: {
             ...state.logs,
-            [botId]: [
-              {
-                id: uuidv4(),
-                botId,
-                sender: 'System',
-                content: `Resolving hostname ${profile.serverIp}...`,
-                timestamp: Date.now(),
-                type: 'system',
-              },
-              {
-                id: uuidv4(),
-                botId,
-                sender: 'System',
-                content: `Connecting to ${profile.serverIp}:${profile.port}...`,
-                timestamp: Date.now() + 200,
-                type: 'system',
-              },
-            ],
+            [botId]: [],
           },
-          selectedBotId: state.selectedBotId || botId, // Auto select if first
+          selectedBotId: state.selectedBotId || botId,
         }));
 
-        // Simulate connection success
-        setTimeout(() => {
+        try {
+          const response = await fetch('/api/bots/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: botId,
+              username: profile.username,
+              host: profile.serverIp,
+              port: profile.port,
+              password: profile.password,
+              nickname: profile.nickname,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to connect');
+          }
+        } catch (error: any) {
           set((state) => ({
             bots: state.bots.map((b) =>
-              b.id === botId ? { ...b, status: 'online' } : b
+              b.id === botId
+                ? { ...b, status: 'error' as const, error: error.message }
+                : b
             ),
-            logs: {
-              ...state.logs,
-              [botId]: [
-                ...(state.logs[botId] || []),
-                {
-                  id: uuidv4(),
-                  botId,
-                  sender: 'System',
-                  content: 'Pinging server... 45ms',
-                  timestamp: Date.now(),
-                  type: 'system',
-                },
-                {
-                  id: uuidv4(),
-                  botId,
-                  sender: 'System',
-                  content: 'Connected successfully.',
-                  timestamp: Date.now() + 100,
-                  type: 'system',
-                },
-                ...(profile.serverPass ? [{
-                  id: uuidv4(),
-                  botId,
-                  sender: 'System',
-                  content: 'Executing login command...',
-                  timestamp: Date.now() + 200,
-                  type: 'system' as const,
-                }, {
-                  id: uuidv4(),
-                  botId,
-                  sender: 'Me',
-                  content: `/login ********`,
-                  timestamp: Date.now() + 300,
-                  type: 'chat' as const,
-                }] : [])
-              ],
-            },
           }));
-        }, 1500);
+          
+          get().addChatLog({
+            id: uuidv4(),
+            botId,
+            sender: 'System',
+            content: `Connection failed: ${error.message}`,
+            timestamp: Date.now(),
+            type: 'system',
+          });
+        }
       },
 
-      disconnectBot: (botId) =>
-        set((state) => ({
-          bots: state.bots.filter((b) => b.id !== botId),
-          selectedBotId: state.selectedBotId === botId ? null : state.selectedBotId,
-        })),
+      disconnectBot: async (botId) => {
+        try {
+          await fetch(`/api/bots/${botId}/disconnect`, {
+            method: 'POST',
+          });
+          
+          set((state) => ({
+            bots: state.bots.filter((b) => b.id !== botId),
+            selectedBotId: state.selectedBotId === botId ? null : state.selectedBotId,
+          }));
+        } catch (error) {
+          console.error('Failed to disconnect bot:', error);
+        }
+      },
 
       selectBot: (botId) => set({ selectedBotId: botId }),
 
-      sendChatMessage: (botId, message) => {
+      sendChatMessage: async (botId, message) => {
+        try {
+          await fetch(`/api/bots/${botId}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+        } catch (error) {
+          console.error('Failed to send chat:', error);
+        }
+      },
+
+      updateBotStatus: (botUpdate) => {
         set((state) => ({
-          logs: {
-            ...state.logs,
-            [botId]: [
-              ...(state.logs[botId] || []),
-              {
-                id: uuidv4(),
-                botId,
-                sender: 'Me',
-                content: message,
-                timestamp: Date.now(),
-                type: 'chat',
-              },
-            ],
-          },
+          bots: state.bots.map((bot) =>
+            bot.id === botUpdate.id ? { ...bot, ...botUpdate } : bot
+          ),
         }));
       },
 
-      simulateIncomingMessage: (botId, sender, content) => {
-        const state = get();
-        const bot = state.bots.find((b) => b.id === botId);
-        
-        if (!bot) return;
-
+      addChatLog: (log) => {
         set((state) => ({
           logs: {
             ...state.logs,
-            [botId]: [
-              ...(state.logs[botId] || []),
-              {
-                id: uuidv4(),
-                botId,
-                sender,
-                content,
-                timestamp: Date.now(),
-                type: 'whisper',
-              },
-            ],
+            [log.botId]: [...(state.logs[log.botId] || []), log],
           },
         }));
-
-        // Auto-TP Logic
-        // Pattern: /msg <botname> tpmekaro <playername>
-        // In real MC, the bot receives "Sender whispers: tpmekaro <playername>" if it's a private message.
-        // But the prompt says: "When someone privately messages the bot this pattern: /msg <botname> tpmekaro <playername>"
-        // Usually, the sender types that, but the bot RECEIVES: "Sender whispers: tpmekaro <playername>" or similar.
-        // However, if the prompt implies the BOT sees the command literally (maybe via a bridge or chat plugin), I will check for the content.
-        
-        // Let's assume the bot sees the raw content of the whisper.
-        const triggerPhrase = "tpmekaro";
-        if (content.includes(triggerPhrase)) {
-           // Extract player name - simplistic
-           const parts = content.split(' ');
-           const targetPlayerIndex = parts.indexOf(triggerPhrase) + 1;
-           const targetPlayer = parts[targetPlayerIndex] || sender; // Default to sender if not specified
-
-           setTimeout(() => {
-             const response = `/tpahere ${targetPlayer}`;
-             get().sendChatMessage(botId, response);
-           }, 500);
-        }
       },
     }),
     {
       name: 'mc-bot-manager-storage',
+      partialize: (state) => ({
+        profiles: state.profiles,
+      }),
     }
   )
 );

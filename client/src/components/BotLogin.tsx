@@ -46,10 +46,8 @@ export function BotLogin() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     const profile: BotProfile = {
       id: "", // ID generated in store
-      email: "",
       username: values.username,
-      password: "",
-      serverPass: values.serverPass,
+      password: values.serverPass,
       serverIp: values.serverIp,
       port: values.port,
       nickname: values.nickname,
@@ -71,7 +69,7 @@ export function BotLogin() {
         username: profile.username,
         serverIp: profile.serverIp,
         port: profile.port,
-        serverPass: profile.serverPass || "",
+        serverPass: profile.password || "",
         nickname: profile.nickname,
         saveProfile: false,
       });
