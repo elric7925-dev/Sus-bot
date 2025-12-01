@@ -19,9 +19,7 @@ import { Plus, Save, Download } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
-  email: z.string().min(1, "Email/Username is required"),
   username: z.string().min(1, "Username is required"),
-  password: z.string().optional(),
   serverIp: z.string().min(1, "Server IP is required"),
   port: z.string().default("25565"),
   nickname: z.string().min(1, "Nickname is required"),
@@ -35,12 +33,10 @@ export function BotLogin() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
       username: "",
-      password: "",
       serverIp: "",
       port: "25565",
-      nickname: "",
+      nickname: "MarvoBot",
       saveProfile: false,
     },
   });
@@ -48,9 +44,9 @@ export function BotLogin() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     const profile: BotProfile = {
       id: "", // ID generated in store
-      email: values.email,
+      email: "",
       username: values.username,
-      password: values.password,
+      password: "",
       serverIp: values.serverIp,
       port: values.port,
       nickname: values.nickname,
@@ -69,9 +65,7 @@ export function BotLogin() {
     const profile = profiles.find((p) => p.id === profileId);
     if (profile) {
       form.reset({
-        email: profile.email,
         username: profile.username,
-        password: profile.password,
         serverIp: profile.serverIp,
         port: profile.port,
         nickname: profile.nickname,
@@ -120,7 +114,7 @@ export function BotLogin() {
                   <FormItem>
                     <FormLabel className="text-xs uppercase text-muted-foreground">Bot Nickname</FormLabel>
                     <FormControl>
-                      <Input placeholder="Steve_Bot" {...field} className="bg-black/20" />
+                      <Input placeholder="MarvoBot" {...field} className="bg-black/20" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -141,33 +135,7 @@ export function BotLogin() {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs uppercase text-muted-foreground">Microsoft Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="steve@minecraft.net" {...field} className="bg-black/20" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs uppercase text-muted-foreground">Password (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="********" {...field} className="bg-black/20" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Email and Password fields removed as requested */}
 
             <div className="grid grid-cols-3 gap-3">
               <FormField
