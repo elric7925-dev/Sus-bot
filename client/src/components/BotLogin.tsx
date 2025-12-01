@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Save, Download } from "lucide-react";
+import { Plus, Save, Download, Users } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -76,14 +76,21 @@ export function BotLogin() {
     }
   };
 
+  const spawnAllBots = () => {
+    profiles.forEach((profile) => {
+      connectBot(profile);
+    });
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full bg-primary hover:bg-primary/90 text-black font-bold tracking-wider rounded-none border border-primary">
-          <Plus className="w-4 h-4 mr-2" />
-          DEPLOY NEW BOT
-        </Button>
-      </DialogTrigger>
+    <div className="flex flex-col gap-2">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button className="w-full bg-primary hover:bg-primary/90 text-black font-bold tracking-wider rounded-none border border-primary">
+            <Plus className="w-4 h-4 mr-2" />
+            DEPLOY NEW BOT
+          </Button>
+        </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] bg-card border-border text-foreground font-mono">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-widest text-primary">DEPLOYMENT CONFIG</DialogTitle>
@@ -209,6 +216,19 @@ export function BotLogin() {
           </form>
         </Form>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+      
+      {profiles.length > 0 && (
+        <Button 
+          variant="outline"
+          className="w-full font-bold tracking-wider rounded-none border-accent text-accent hover:bg-accent/10"
+          onClick={spawnAllBots}
+          data-testid="spawn-all-button"
+        >
+          <Users className="w-4 h-4 mr-2" />
+          SPAWN ALL ({profiles.length})
+        </Button>
+      )}
+    </div>
   );
 }

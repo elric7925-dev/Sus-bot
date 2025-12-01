@@ -2,7 +2,7 @@ import { useBotStore } from "@/store/botStore";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Wifi, WifiOff, Activity, MapPin, Trash2, RefreshCw, Power, PowerOff } from "lucide-react";
+import { Activity, MapPin, Trash2, RefreshCw, PowerOff } from "lucide-react";
 
 export function BotList() {
   const { bots, selectedBotId, selectBot, disconnectBot, reconnectBot, removeBot } = useBotStore();
@@ -36,7 +36,7 @@ export function BotList() {
         </span>
       </div>
       
-      <ScrollArea className="flex-1 h-[calc(100vh-350px)]">
+      <ScrollArea className="flex-1 h-[calc(100vh-400px)]">
         <div className="space-y-2 pr-2">
           {bots.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-sm border border-dashed border-border p-4">
@@ -51,7 +51,7 @@ export function BotList() {
               key={bot.id}
               onClick={() => selectBot(bot.id)}
               className={cn(
-                "group relative flex flex-col gap-2 p-3 border transition-all cursor-pointer hover:bg-accent/5",
+                "relative flex flex-col gap-2 p-3 border transition-all cursor-pointer hover:bg-accent/5",
                 selectedBotId === bot.id
                   ? "border-primary bg-primary/5 shadow-[0_0_15px_rgba(85,255,85,0.1)]"
                   : "border-border bg-card hover:border-primary/50"
@@ -96,17 +96,18 @@ export function BotList() {
                 </div>
               )}
 
-              {/* Control Buttons */}
-              <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Control Buttons - Always Visible */}
+              <div className="flex gap-1 mt-2">
                 {bot.status === 'online' && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-[10px] font-mono border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
+                    className="h-7 px-2 text-[10px] font-mono border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10 flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       disconnectBot(bot.id, false);
                     }}
+                    data-testid={`disconnect-bot-${bot.id}`}
                   >
                     <PowerOff className="w-3 h-3 mr-1" />
                     DISCONNECT
@@ -117,11 +118,12 @@ export function BotList() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-[10px] font-mono border-primary/50 text-primary hover:bg-primary/10"
+                    className="h-7 px-2 text-[10px] font-mono border-primary/50 text-primary hover:bg-primary/10 flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       reconnectBot(bot.id);
                     }}
+                    data-testid={`reconnect-bot-${bot.id}`}
                   >
                     <RefreshCw className="w-3 h-3 mr-1" />
                     RECONNECT
@@ -132,7 +134,7 @@ export function BotList() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-[10px] font-mono border-orange-500/50 text-orange-500"
+                    className="h-7 px-2 text-[10px] font-mono border-orange-500/50 text-orange-500 flex-1"
                     disabled
                   >
                     <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
@@ -140,18 +142,30 @@ export function BotList() {
                   </Button>
                 )}
 
+                {bot.status === 'connecting' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-[10px] font-mono border-yellow-500/50 text-yellow-500 flex-1"
+                    disabled
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                    CONNECTING...
+                  </Button>
+                )}
+
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-6 px-2 text-[10px] font-mono border-destructive/50 text-destructive hover:bg-destructive/10"
+                  className="h-7 px-2 text-[10px] font-mono border-destructive/50 text-destructive hover:bg-destructive/10"
                   onClick={(e) => {
                     e.stopPropagation();
                     disconnectBot(bot.id, true);
                     removeBot(bot.id);
                   }}
+                  data-testid={`remove-bot-${bot.id}`}
                 >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  REMOVE
+                  <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
             </div>
