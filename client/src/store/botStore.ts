@@ -7,6 +7,7 @@ export interface BotProfile {
   email: string;
   username: string;
   password?: string; // In a real app, be careful. Here it's local storage mock.
+  serverPass?: string; // For /login or server auth
   serverIp: string;
   port: string;
   nickname: string;
@@ -88,8 +89,16 @@ export const useBotStore = create<BotState>()(
                 id: uuidv4(),
                 botId,
                 sender: 'System',
-                content: `Connecting to ${profile.serverIp}...`,
+                content: `Resolving hostname ${profile.serverIp}...`,
                 timestamp: Date.now(),
+                type: 'system',
+              },
+              {
+                id: uuidv4(),
+                botId,
+                sender: 'System',
+                content: `Connecting to ${profile.serverIp}:${profile.port}...`,
+                timestamp: Date.now() + 200,
                 type: 'system',
               },
             ],
@@ -111,10 +120,33 @@ export const useBotStore = create<BotState>()(
                   id: uuidv4(),
                   botId,
                   sender: 'System',
-                  content: 'Connected successfully.',
+                  content: 'Pinging server... 45ms',
                   timestamp: Date.now(),
                   type: 'system',
                 },
+                {
+                  id: uuidv4(),
+                  botId,
+                  sender: 'System',
+                  content: 'Connected successfully.',
+                  timestamp: Date.now() + 100,
+                  type: 'system',
+                },
+                ...(profile.serverPass ? [{
+                  id: uuidv4(),
+                  botId,
+                  sender: 'System',
+                  content: 'Executing login command...',
+                  timestamp: Date.now() + 200,
+                  type: 'system' as const,
+                }, {
+                  id: uuidv4(),
+                  botId,
+                  sender: 'Me',
+                  content: `/login ********`,
+                  timestamp: Date.now() + 300,
+                  type: 'chat' as const,
+                }] : [])
               ],
             },
           }));

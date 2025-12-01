@@ -22,6 +22,7 @@ const formSchema = z.object({
   username: z.string().min(1, "Username is required"),
   serverIp: z.string().min(1, "Server IP is required"),
   port: z.string().default("25565"),
+  serverPass: z.string().optional(),
   nickname: z.string().min(1, "Nickname is required"),
   saveProfile: z.boolean().default(false),
 });
@@ -36,6 +37,7 @@ export function BotLogin() {
       username: "",
       serverIp: "",
       port: "25565",
+      serverPass: "",
       nickname: "MarvoBot",
       saveProfile: false,
     },
@@ -47,6 +49,7 @@ export function BotLogin() {
       email: "",
       username: values.username,
       password: "",
+      serverPass: values.serverPass,
       serverIp: values.serverIp,
       port: values.port,
       nickname: values.nickname,
@@ -68,6 +71,7 @@ export function BotLogin() {
         username: profile.username,
         serverIp: profile.serverIp,
         port: profile.port,
+        serverPass: profile.serverPass || "",
         nickname: profile.nickname,
         saveProfile: false,
       });
@@ -165,6 +169,20 @@ export function BotLogin() {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="serverPass"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs uppercase text-muted-foreground">Server Password (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="/login password" {...field} className="bg-black/20" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
